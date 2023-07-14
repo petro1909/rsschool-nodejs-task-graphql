@@ -5,14 +5,14 @@ import { PostQueries, PostMutations } from './resolvers/postHandlers.js';
 import { ProfileQueries, ProfileMutations } from './resolvers/profileHandlers.js';
 import { UserQueries, UserMutations, UserSubscriptions } from './resolvers/userHandlers.js';
 
-export const gqlResponse = Type.Partial(
+export const gqlResponseSchema = Type.Partial(
   Type.Object({
     data: Type.Any(),
     errors: Type.Any(),
   }),
 );
 
-export const createGqlResponse = {
+export const createGqlResponseSchema = {
   body: Type.Object(
     {
       query: Type.String(),
