@@ -1,9 +1,20 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-import { createGqlResponse, gqlResponse } from './schemas.js';
-import { graphql } from "graphql";
+import {  createGqlResponseSchema, createGraphqlSchema, gqlResponseSchema } from './schemas.js';
+import graphql from 'graphql';
+import depthLimit from 'graphql-depth-limit';
+import { PrismaClient } from '@prisma/client';
+import { createUserType } from './types/user.js';
+import { createPostType } from './types/post.js';
+import { createProfileType } from './types/profile.js';
+import { createMemberType } from './types/memberType.js';
+import { createDataLoaders } from './loaders/commonLoader.js';
 
 
 const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  const { prisma } = fastify;
+  createTypes(prisma);
+  const gqlSchema = createGraphqlSchema(prisma);
+
   fastify.route({
     url: '/',
     method: 'POST',
@@ -24,10 +35,24 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
       const result = await graphql.graphql({
         schema: gqlSchema,
         source: req.body.query,
-        variableValues: req.body.variables
-      })
+        variableValues: req.body.variables,
+        contextValue: {
+          prisma,
+          loaders: {
+            ...createDataLoaders(prisma),
+          }
+      }
+    })
       return {data: result.data, errors: result.errors};
     },
   });
 }
+
+function createTypes(prisma: PrismaClient) {
+  createUserType(prisma);
+  createPostType(prisma);
+  createProfileType(prisma);
+  createMemberType(prisma);
+};
+
 export default plugin;

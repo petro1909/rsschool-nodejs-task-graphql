@@ -4,6 +4,7 @@ import { MemberTypeQueries } from './resolvers/memberTypeHandlers.js';
 import { PostQueries, PostMutations } from './resolvers/postHandlers.js';
 import { ProfileQueries, ProfileMutations } from './resolvers/profileHandlers.js';
 import { UserQueries, UserMutations, UserSubscriptions } from './resolvers/userHandlers.js';
+import { PrismaClient } from '@prisma/client';
 
 export const gqlResponseSchema = Type.Partial(
   Type.Object({
@@ -24,30 +25,36 @@ export const createGqlResponseSchema = {
   ),
 };
 
-const queries = new graphql.GraphQLObjectType({
-  name: "Query",
-  fields:() => ({
-    ...UserQueries,
-    ...PostQueries,
-    ...ProfileQueries,
-    ...MemberTypeQueries
-  }),
-})
 
 
-const mutations = new graphql.GraphQLObjectType({
-  name: "Mutation",
-  fields:
-    {
-      ...UserMutations,
-      ...UserSubscriptions,
-      ...PostMutations,
-      ...ProfileMutations
-  }
-})
-
-export const gqlSchema = new graphql.GraphQLSchema({
-  query: queries,
-  mutation: mutations,
+export const createGraphqlSchema = (prisma: PrismaClient) => {
+  const queries = new graphql.GraphQLObjectType({
+    name: "Query",
+    fields:() => ({
+      ...UserQueries(prisma),
+      ...PostQueries(prisma),
+      ...ProfileQueries(prisma),
+      ...MemberTypeQueries(prisma)
+    }),
+  })
   
-})
+  
+  const mutations = new graphql.GraphQLObjectType({
+    name: "Mutation",
+    fields:
+      {
+        ...UserMutations(prisma),
+        ...UserSubscriptions(prisma),
+        ...PostMutations(prisma),
+        ...ProfileMutations(prisma)
+    }
+  })
+  
+  const gqlSchema = new graphql.GraphQLSchema({
+    query: queries,
+    mutation: mutations,
+    
+  });
+
+  return gqlSchema;
+}
