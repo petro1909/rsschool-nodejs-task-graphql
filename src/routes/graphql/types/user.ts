@@ -4,64 +4,46 @@ import { ProfileType } from "../types/profile.js";
 import { PostType } from "../types/post.js";
 import { PrismaClient } from "@prisma/client";
 
-export const UserType = new graphql.GraphQLObjectType({
-  name: 'User',
-  fields:() => ({
-    id: {type: new graphql.GraphQLNonNull(UUIDType)},
-    name: {type: new graphql.GraphQLNonNull(graphql.GraphQLString)},
-    balance: {type: new graphql.GraphQLNonNull(graphql.GraphQLFloat)},
-    profile: {
-      type: ProfileType,
-      resolve: async(source) => {
-        return await new PrismaClient().profile.findFirst({
-          where:{
-            userId: source.id
-          }
-        })
+export let UserType: graphql.GraphQLObjectType;
+
+export function createUserType(prisma: PrismaClient) {
+  UserType = new graphql.GraphQLObjectType({
+    name: 'User',
+    fields:() => ({
+      id: {type: new graphql.GraphQLNonNull(UUIDType)},
+      name: {type: new graphql.GraphQLNonNull(graphql.GraphQLString)},
+      balance: {type: new graphql.GraphQLNonNull(graphql.GraphQLFloat)},
+      profile: {
+        type: ProfileType,
+        resolve: async(source, args, context) => {
+          const profile = await context.loaders.profileLoader.load(source.id);
+          return profile;
+        }
+      },
+      posts: {
+        type: new graphql.GraphQLList(PostType),
+        resolve: async(source, args, context) => {
+          const posts = await context.loaders.postsLoader.load(source.id);
+          return posts;
+        }
+      },
+      userSubscribedTo: {
+        type: new graphql.GraphQLList(UserType),
+        resolve: async (source, args, context) => {
+          const userSubscibedTo = context.loaders.userSubscribedTo.load(source.id)
+          return userSubscibedTo
+        }
+      },
+      subscribedToUser: {
+        type: new graphql.GraphQLList(UserType),
+        resolve: async(source, args, context) => {
+          const userSubscibers = context.loaders.userSubscribers.load(source.id)
+          return userSubscibers
+        }
       }
-    },
-    posts: {
-      type: new graphql.GraphQLList(PostType),
-      resolve: async(source) => {
-        return await new PrismaClient().post.findMany({
-          where: {
-            authorId: source.id
-          }
-        })
-      }
-    },
-    userSubscribedTo: {
-      type: new graphql.GraphQLList(UserType),
-      resolve: async (source) => {
-        const prisma = new PrismaClient();
-        const authorsObj = await prisma.subscribersOnAuthors.findMany({
-          where: {
-            subscriberId: source.id
-          },
-          select: {
-            author: true
-          }
-        });
-        return authorsObj.map((obj) => obj.author);
-      }
-    },
-    subscribedToUser: {
-      type: new graphql.GraphQLList(UserType),
-      resolve: async(source) => {
-        const prisma = new PrismaClient();
-        const subscriberObj = await prisma.subscribersOnAuthors.findMany({
-          where: {
-            authorId: source.id
-          },
-          select: {
-            subsriber: true
-          }
-        });
-        return subscriberObj.map((obj) => obj.subsriber);
-      }
-    }
-  }),
-})
+    }),
+  })
+} 
 
 export const CreateUserInput = new graphql.GraphQLInputObjectType({
   name: 'CreateUserInput',
