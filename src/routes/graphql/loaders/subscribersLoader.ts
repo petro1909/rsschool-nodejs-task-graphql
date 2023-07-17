@@ -12,7 +12,6 @@ export function createUsersSubscribedLoader(prisma: PrismaClient) {
         author: true
       }
     })
-    console.log(usersSubscribedTo);
     const usersSubscribedToMap = new Map();
     usersSubscribedTo.forEach((userSubscribedTo) => {
       let userSubscribedToArray = usersSubscribedToMap.get(userSubscribedTo.subscriberId);
@@ -42,7 +41,6 @@ export function createUsersSubscribersLoader(prisma: PrismaClient) {
         subsriber: true
       }
     })
-    console.log(usersSubscribers);
     const usersSubscribersMap = new Map();
     usersSubscribers.forEach((userSubscriber) => {
       let userSubscribersArray = usersSubscribersMap.get(userSubscriber.authorId);

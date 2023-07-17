@@ -8,7 +8,6 @@ export function createPostsLoader(prisma: PrismaClient) {
         authorId: {in: keys as Prisma.Enumerable<string> | undefined}
       }
     })
-    console.log(posts);
     const postMap = new Map();
     posts.forEach((post) => {
       let authorPostArray = postMap.get(post.authorId);
