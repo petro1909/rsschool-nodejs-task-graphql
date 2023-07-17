@@ -40,9 +40,11 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
           prisma,
           loaders: {
             ...createDataLoaders(prisma),
-          }
-      }
-    })
+          },
+          data: {},
+        }
+      })
+      console.log(result.errors);
       return {data: result.data, errors: result.errors};
     },
   });
