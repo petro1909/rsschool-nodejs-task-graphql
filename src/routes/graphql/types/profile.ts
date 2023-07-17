@@ -28,7 +28,6 @@ export function createProfileType(prisma: PrismaClient) {
       memberType: {
         type: MemberType,
         resolve: async (source, args, context) => {
-          console.log(context.loaders);
           const memberType = await context.loaders.memberTypeLoader.load(source.memberTypeId)
           return memberType 
         }
