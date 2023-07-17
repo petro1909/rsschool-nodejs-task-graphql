@@ -18,14 +18,8 @@ module.exports = {
   ],
   overrides: [],
   rules: {
-    'no-useless-escape': 0,
-    '@typescript-eslint/no-unsafe-return': 0,
-    '@typescript-eslint/no-unnecessary-type-assertion': 0,
-    '@typescript-eslint/no-unsafe-call': 0,
-    '@typescript-eslint/no-unsafe-assignment': 0,
-    '@typescript-eslint/no-unsafe-argument': 0,
-    '@typescript-eslint/no-unsafe-member-access': 0,
     '@typescript-eslint/no-explicit-any': 0,
+    '@typescript-eslint/no-unsafe-assignment': 0,
     '@typescript-eslint/require-await': 0,
     '@typescript-eslint/ban-ts-comment': 0,
     '@typescript-eslint/no-misused-promises': [
