@@ -1,29 +1,32 @@
-import { PrismaClient } from "@prisma/client";
 import  graphql  from "graphql";
-import { MemberType } from "../types/memberType.js";
-import { MemberTypeId } from "../types/memberTypeId.js";
+import { MemberType } from "../types/gqlTypes/memberType.js";
+import { MemberTypeId } from "../types/gqlTypes/memberTypeId.js";
+import { MemberType as MType} from "../types/memberType.js"
+import { Context } from "../types/context.js";
 
-export const MemberTypeQueries = (prisma: PrismaClient) => {
-  return {
-    memberType: {
-      type: MemberType,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(MemberTypeId) },
-      },
-      resolve: async (_, { id }) => {
-        return await prisma.memberType.findFirst({
-          where: {
-            id: id
-          }
-        });
-      },
-    },
-    memberTypes: {
-      type: new graphql.GraphQLList(MemberType),
-      resolve: async () => {
-        return await prisma.memberType.findMany();
-        }
-    }
-  }
+
+const memberType: graphql.GraphQLFieldConfig<MType, Context> = {
+  type: MemberType,
+  args: {
+    id: { type: new graphql.GraphQLNonNull(MemberTypeId) },
+  },
+  resolve: async (_, { id }, context) => {
+    return await context.prisma.memberType.findFirst({
+      where: {
+        id: id
+      }
+    });
+  },
+};
   
+const memberTypes: graphql.GraphQLFieldConfig<MType, Context> ={
+  type: new graphql.GraphQLList(MemberType),
+  resolve: async (_, args, context) => {
+    return await context.prisma.memberType.findMany();
+    }
 }
+
+export const MemberTypeQueries = {
+  memberType,
+  memberTypes,
+};

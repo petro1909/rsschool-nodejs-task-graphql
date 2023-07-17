@@ -1,157 +1,164 @@
-import { PrismaClient } from "@prisma/client";
-import  graphql from "graphql";
-import { UUIDType } from "../types/uuid.js";
-import { ChangeUserInput, CreateUserInput,  UserType } from "../types/user.js";
+import graphql from "graphql";
+import { UUIDType } from "../types/gqlTypes/uuid.js";
+import { ChangeUserInput, CreateUserInput,  UserType } from "../types/gqlTypes/user.js";
 import * as gqlResolveInfo from 'graphql-parse-resolve-info';
+import {User, UserInput } from "../types/user.js";
+import { Context } from "../types/context.js";
 
-export const UserQueries = (prisma: PrismaClient) => {
-  return {
-    user: {
-      type: UserType,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(UUIDType) },
+const user: graphql.GraphQLFieldConfig<User, Context, UserInput> = {
+  type: UserType,
+  args: {
+    id: { type: new graphql.GraphQLNonNull(UUIDType) },
+  },
+  resolve: async (_, { id }, context) => {
+    const user = await context.prisma.user.findFirst({
+      where: {
+        id: id
       },
-      resolve: async (_, { id }) => {
-        return await prisma.user.findFirst({
-          where: {
-            id: id
-          },
-        });
+    });
+    return user;
+  },
+}
+
+const users: graphql.GraphQLFieldConfig<User, Context, UserInput> = {
+  type: new graphql.GraphQLList(UserType),
+  resolve: async (source, agrs, context, resolveInfo) => {
+    const parsedResolveInfoFragment = gqlResolveInfo.parseResolveInfo(resolveInfo);
+
+    const simplifiedFragment = gqlResolveInfo.simplifyParsedResolveInfoFragmentWithType(
+      parsedResolveInfoFragment as gqlResolveInfo.ResolveTree,
+      new graphql.GraphQLNonNull(UserType)
+    );
+    const isUserSubscribedToField: boolean = simplifiedFragment.fields['userSubscribedTo'] !== undefined 
+    const isUserSubscribersToField: boolean = simplifiedFragment.fields['subscribedToUser'] !== undefined
+    
+    const users = await context.prisma.user.findMany({
+      include: {
+        userSubscribedTo: isUserSubscribedToField,
+        subscribedToUser: isUserSubscribersToField, 
+      }     
+    });
+    
+    if(isUserSubscribersToField) {
+      const userSubs = new Map();
+      users.map((user) => userSubs.set(user.id, user.subscribedToUser.map((sub) => {
+        const subId = sub.subscriberId;
+        return users.find((user) => user.id === subId);
+        })));
+      context.data.subs = userSubs;
+    } else {
+      context.data.subs = undefined;
+    }
+
+    if(isUserSubscribedToField) {
+      const userSubsTo = new Map();
+      users.map((user) => userSubsTo.set(user.id, user.userSubscribedTo.map((sub) => {
+        const authorId = sub.authorId;
+        return users.find((user) => user.id === authorId);
+      })));
+      context.data.subTo = userSubsTo;
+      return users;
+    } else {
+      context.data.subTo = undefined;
+    }
+    return users;
+  },
+}
+
+
+const createUser: graphql.GraphQLFieldConfig<User,Context, UserInput> = {
+  type: new graphql.GraphQLNonNull(UserType),
+  args: {
+    dto: { type: new graphql.GraphQLNonNull(CreateUserInput) },
+  },
+  resolve: async (_, {dto}, context) => {
+    return context.prisma.user.create({data: dto});
+  }
+};
+
+const changeUser: graphql.GraphQLFieldConfig<User,Context, UserInput> = {
+  type: new graphql.GraphQLNonNull(UserType),
+  args: {
+    id: { type: new graphql.GraphQLNonNull(UUIDType) },
+    dto: { type: new graphql.GraphQLNonNull(ChangeUserInput)}
+  },
+  resolve: async (_, {id, dto}, context) => {
+    return await context.prisma.user.update({
+      where: {
+        id: id
       },
-    },
-    users: {
-      type: new graphql.GraphQLList(UserType),
-      resolve: async (source, agrs, context, resolveInfo) => {
-        const parsedResolveInfoFragment = gqlResolveInfo.parseResolveInfo(resolveInfo);
-        //console.log(parsedResolveInfoFragment);
-        const simplifiedFragment = gqlResolveInfo.simplifyParsedResolveInfoFragmentWithType(
-          parsedResolveInfoFragment as gqlResolveInfo.ResolveTree,
-          UserType
-        );
-        const isUserSubscribedToField: boolean = simplifiedFragment.fields['userSubscribedTo'] !== undefined 
-        const isUserSubscribersToField: boolean = simplifiedFragment.fields['subscribedToUser'] !== undefined
-        const include = {
-          
+      data: dto
+    });
+  }
+};
+
+const deleteUser: graphql.GraphQLFieldConfig<User,Context, UserInput> ={
+  type: graphql.GraphQLBoolean,
+  args: {
+    id: { type: new graphql.GraphQLNonNull(UUIDType) },
+  },
+  resolve: async (_, {id}, context) => {
+    try {
+      await context.prisma.user.delete({
+        where: {
+          id: id
         }
-        
-        const users = await prisma.user.findMany({
-          include: {
-            userSubscribedTo: isUserSubscribedToField,
-            subscribedToUser: isUserSubscribersToField, 
-          }     
-        });
-        //console.log(users.map((user) => user.userSubscribedTo.map((subTo) => subTo.author)));
-        if(isUserSubscribersToField) {
-          const userSubs = new Map();
-          users.map((user) => userSubs.set(user.id, user.subscribedToUser.map((sub) => {
-            const subId = sub.subscriberId;
-            return users.find((user) => user.id === subId);
-            })));
-          context.data.subs = userSubs;
-        } else {
-          context.data.subs = undefined;
-        }
-        if(isUserSubscribedToField) {
-          const userSubsTo = new Map();
-          users.map((user) => userSubsTo.set(user.id, user.userSubscribedTo.map((sub) => {
-            const authorId = sub.authorId;
-            return users.find((user) => user.id === authorId);
-          })));
-          context.data.subTo = userSubsTo;
-          return users;
-        } else {
-          context.data.subTo = undefined;
-        }
-        return users;
-      },
+      });
+      return true;
+    } catch(err) {
+      return false;
     }
   }
 }
 
-export const UserMutations = (prisma: PrismaClient) => {
-  return {
-    createUser: {
-      type: UserType,
-      args: {
-        dto: { type: new graphql.GraphQLNonNull(CreateUserInput) },
-      },
-      resolve: async (_, {dto}) => {
-        return prisma.user.create({data: dto});
+
+const subscribeTo: graphql.GraphQLFieldConfig<User,Context, UserInput> = {
+  type: new graphql.GraphQLNonNull(UserType),
+  args: {
+    userId: { type: new graphql.GraphQLNonNull(UUIDType) },
+    authorId: {type: new graphql.GraphQLNonNull(UUIDType)}
+  },
+  resolve: async (_, {userId, authorId}, context) => {
+    await context.prisma.subscribersOnAuthors.create({
+      data: {
+        subscriberId: userId,
+        authorId: authorId,
       }
-    },
-    changeUser: {
-      type: UserType,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(UUIDType) },
-        dto: { type: new graphql.GraphQLNonNull(ChangeUserInput)}
-      },
-      resolve: async (_, {id, dto}) => {
-        return await prisma.user.update({
-          where: {
-            id: id
-          },
-          data: dto
-        });
+    })
+    return await context.prisma.user.findFirst({
+      where: {
+        id: userId
       }
-    }, 
-    deleteUser:  {
-      type: graphql.GraphQLBoolean,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(UUIDType) },
-      },
-      resolve: async (_, {id}) => {
-        try {
-          await prisma.user.delete({
-            where: {
-              id: id
-            }
-          });
-          return true;
-        } catch(err) {
-          return false;
-        }
+    })
+  }
+};
+
+const unsubscribeFrom: graphql.GraphQLFieldConfig<User,Context, UserInput> = {
+  type: graphql.GraphQLBoolean,
+  args: {
+    userId: { type: new graphql.GraphQLNonNull(UUIDType) },
+    authorId: {type: new graphql.GraphQLNonNull(UUIDType)}
+  },
+  resolve: async (_, args, context) => {
+    await context.prisma.subscribersOnAuthors.deleteMany({
+      where: {
+        subscriberId: args.userId,
+        authorId: args.authorId
       }
-    }
+    })
+    return true;
   }
 }
 
-export const UserSubscriptions = (prisma: PrismaClient) => {
-  return {
-    subscribeTo: {
-      type: UserType,
-      args: {
-        userId: { type: new graphql.GraphQLNonNull(UUIDType) },
-        authorId: {type: new graphql.GraphQLNonNull(UUIDType)}
-      },
-      resolve: async (_, {userId, authorId}) => {
-        await prisma.subscribersOnAuthors.create({
-          data: {
-            subscriberId: userId,
-            authorId: authorId,
-          }
-        })
-        return await prisma.user.findFirst({
-          where: {
-            id: userId
-          }
-        })
-      }
-    },
-    unsubscribeFrom: {
-      type: graphql.GraphQLBoolean,
-      args: {
-        userId: { type: new graphql.GraphQLNonNull(UUIDType) },
-        authorId: {type: new graphql.GraphQLNonNull(UUIDType)}
-      },
-      resolve: async (_, args) => {
-        await prisma.subscribersOnAuthors.deleteMany({
-          where: {
-            subscriberId: args.userId,
-            authorId: args.authorId
-          }
-        })
-        return true;
-      }
-    }
-  }
+export const UserQueries = {
+  user,
+  users,
+}
+
+export const UserMutations = {
+  createUser,
+  changeUser,
+  deleteUser,
+  subscribeTo,
+  unsubscribeFrom,
 }

@@ -1,78 +1,83 @@
-import { PrismaClient } from "@prisma/client";
 import  graphql  from "graphql";
-import { UUIDType } from "../types/uuid.js";
-import { CreateProfileInput, ChangeProfileInput, ProfileType } from "../types/profile.js";
+import { UUIDType } from "../types/gqlTypes/uuid.js";
+import { CreateProfileInput, ChangeProfileInput, ProfileType } from "../types/gqlTypes/profile.js";
+import { Profile, ProfileInput } from "../types/profile.js";
+import { Context } from "../types/context.js";
 
-export const ProfileQueries = (prisma: PrismaClient) => {
-  return {
-    profile:  {
-      type: ProfileType,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(UUIDType) },
+const profile: graphql.GraphQLFieldConfig<Profile, Context, ProfileInput> = {
+  type: ProfileType,
+  args: {
+    id: { type: new graphql.GraphQLNonNull(UUIDType) },
+  },
+  resolve: async (_, { id }, context) => {
+    return await context.prisma.profile.findFirst({
+      where: {
+        id: id
       },
-      resolve: async (_, { id }) => {
-        return await prisma.profile.findFirst({
-          where: {
-            id: id
-          },
-        });
-      },
-    },
-    profiles: {
-      type: new graphql.GraphQLList(ProfileType),
-      resolve: async () => {
-        return await prisma.profile.findMany({
-        });
-      }
-    }
+    });
+  },
+};
+const profiles: graphql.GraphQLFieldConfig<Profile, Context, ProfileInput> = {
+  type: new graphql.GraphQLList(ProfileType),
+  resolve: async (_, args, context) => {
+    return await context.prisma.profile.findMany({
+    });
   }
 }
 
-export const ProfileMutations = (prisma: PrismaClient) => {
-  return {
-    createProfile: {
-      type: ProfileType,
-      args: {
-        dto: { type: new graphql.GraphQLNonNull(CreateProfileInput) },
-      },
-      resolve: async (_, {dto}) => {
-        return prisma.profile.create({data: dto});
-      }
-    },
-    changeProfile: {
-      type: ProfileType,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(UUIDType) },
-        dto: { type: new graphql.GraphQLNonNull(ChangeProfileInput)}
-      },
-      resolve: async (_, {id, dto}) => {
-        return await prisma.profile.update({
-          where: {
-            id: id
-          },
-          data: dto
-        });
-      }
-    }, 
-    deleteProfile: {
-      type: graphql.GraphQLBoolean,
-      args: {
-        id: { type: new graphql.GraphQLNonNull(UUIDType) },
-      },
-      resolve: async (_, {id}) => {
-        try {
-          await prisma.profile.delete({
-            where: {
-              id: id
-            }
-          });
-          return true;
-        } catch(err) {
-          return false;
-        }
-        
-      }
-    }
+
+const createProfile: graphql.GraphQLFieldConfig<Profile, Context, ProfileInput> = {
+  type: new graphql.GraphQLNonNull(ProfileType),
+  args: {
+    dto: { type: new graphql.GraphQLNonNull(CreateProfileInput) },
+  },
+  resolve: async (_, {dto}, context) => {
+    return context.prisma.profile.create({data: dto});
   }
-  
+};
+const changeProfile: graphql.GraphQLFieldConfig<Profile, Context, ProfileInput> = {
+  type: new graphql.GraphQLNonNull(ProfileType),
+  args: {
+    id: { type: new graphql.GraphQLNonNull(UUIDType) },
+    dto: { type: new graphql.GraphQLNonNull(ChangeProfileInput)}
+  },
+  resolve: async (_, {id, dto}, context) => {
+    return await context.prisma.profile.update({
+      where: {
+        id: id
+      },
+      data: dto
+    });
+  }
+};
+const deleteProfile: graphql.GraphQLFieldConfig<Profile, Context, ProfileInput> ={
+  type: graphql.GraphQLBoolean,
+  args: {
+    id: { type: new graphql.GraphQLNonNull(UUIDType) },
+  },
+  resolve: async (_, {id}, context) => {
+    try {
+      await context.prisma.profile.delete({
+        where: {
+          id: id
+        }
+      });
+      return true;
+    } catch(err) {
+      return false;
+    }
+    
+  }
+}
+
+
+export const ProfileQueries = { 
+  profile,
+  profiles
+}
+
+export const ProfileMutations = {
+  createProfile,
+  changeProfile,
+  deleteProfile
 }

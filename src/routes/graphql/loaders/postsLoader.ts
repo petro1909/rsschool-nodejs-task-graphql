@@ -1,14 +1,16 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import DataLoader from "dataloader";
+import { Post } from "../types/post.js";
 
 export function createPostsLoader(prisma: PrismaClient) {
-  return new DataLoader(async (keys: Readonly<string[]>) => {
+  return new DataLoader(async (keys: Readonly<string[]>): Promise<Array<Post[]>> => {
     const posts = await prisma.post.findMany({
       where: {
-        authorId: {in: keys as Prisma.Enumerable<string> | undefined}
+        authorId: {in: keys as string[] | undefined}
       }
-    })
-    const postMap = new Map();
+    }) as Array<Post>;
+  
+    const postMap = new Map<string, Post[]>();
     posts.forEach((post) => {
       let authorPostArray = postMap.get(post.authorId);
       if(!authorPostArray) {
@@ -17,11 +19,11 @@ export function createPostsLoader(prisma: PrismaClient) {
       authorPostArray.push(post);
       postMap.set(post.authorId, authorPostArray)
     });
-    const orderedPosts = new Array<any>();
+    const orderedPosts = new Array<Post[]>();
     keys.forEach((key) => {
-      orderedPosts.push(postMap.get(key))
+      orderedPosts.push(postMap.get(key) as Post[])
     })
-   
+    
     return new Promise((resolve) => resolve(orderedPosts));
   })
 }
