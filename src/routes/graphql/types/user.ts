@@ -3,6 +3,7 @@ import { UUIDType } from "./uuid.js";
 import { ProfileType } from "../types/profile.js";
 import { PostType } from "../types/post.js";
 import { PrismaClient } from "@prisma/client";
+import * as gqlResolveInfo from 'graphql-parse-resolve-info';
 
 export let UserType: graphql.GraphQLObjectType;
 
@@ -29,7 +30,11 @@ export function createUserType(prisma: PrismaClient) {
       },
       userSubscribedTo: {
         type: new graphql.GraphQLList(UserType),
-        resolve: async (source, args, context) => {
+        resolve: async (source, args, context, resolveInfo) => {   
+          //console.log(context.data.subTo);       
+          if(context.data.subTo){
+            return context.data.subTo.get(source.id);
+          }
           const userSubscibedTo = context.loaders.userSubscribedTo.load(source.id)
           return userSubscibedTo
         }
@@ -37,6 +42,9 @@ export function createUserType(prisma: PrismaClient) {
       subscribedToUser: {
         type: new graphql.GraphQLList(UserType),
         resolve: async(source, args, context) => {
+          if(context.data.subs){
+            return context.data.subs.get(source.id)
+          }
           const userSubscibers = context.loaders.userSubscribers.load(source.id)
           return userSubscibers
         }

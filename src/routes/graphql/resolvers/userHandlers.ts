@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import  graphql from "graphql";
 import { UUIDType } from "../types/uuid.js";
 import { ChangeUserInput, CreateUserInput,  UserType } from "../types/user.js";
+import * as gqlResolveInfo from 'graphql-parse-resolve-info';
 
 export const UserQueries = (prisma: PrismaClient) => {
   return {
@@ -20,8 +21,48 @@ export const UserQueries = (prisma: PrismaClient) => {
     },
     users: {
       type: new graphql.GraphQLList(UserType),
-      resolve: async (_) => { 
-        return await prisma.user.findMany();
+      resolve: async (source, agrs, context, resolveInfo) => {
+        const parsedResolveInfoFragment = gqlResolveInfo.parseResolveInfo(resolveInfo);
+        //console.log(parsedResolveInfoFragment);
+        const simplifiedFragment = gqlResolveInfo.simplifyParsedResolveInfoFragmentWithType(
+          parsedResolveInfoFragment as gqlResolveInfo.ResolveTree,
+          UserType
+        );
+        const isUserSubscribedToField: boolean = simplifiedFragment.fields['userSubscribedTo'] !== undefined 
+        const isUserSubscribersToField: boolean = simplifiedFragment.fields['subscribedToUser'] !== undefined
+        const include = {
+          
+        }
+        
+        const users = await prisma.user.findMany({
+          include: {
+            userSubscribedTo: isUserSubscribedToField,
+            subscribedToUser: isUserSubscribersToField, 
+          }     
+        });
+        //console.log(users.map((user) => user.userSubscribedTo.map((subTo) => subTo.author)));
+        if(isUserSubscribersToField) {
+          const userSubs = new Map();
+          users.map((user) => userSubs.set(user.id, user.subscribedToUser.map((sub) => {
+            const subId = sub.subscriberId;
+            return users.find((user) => user.id === subId);
+            })));
+          context.data.subs = userSubs;
+        } else {
+          context.data.subs = undefined;
+        }
+        if(isUserSubscribedToField) {
+          const userSubsTo = new Map();
+          users.map((user) => userSubsTo.set(user.id, user.userSubscribedTo.map((sub) => {
+            const authorId = sub.authorId;
+            return users.find((user) => user.id === authorId);
+          })));
+          context.data.subTo = userSubsTo;
+          return users;
+        } else {
+          context.data.subTo = undefined;
+        }
+        return users;
       },
     }
   }
