@@ -37,7 +37,6 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
           data: {},
         }
       })
-      console.log(result.errors);
       return {data: result.data, errors: result.errors};
     },
   });
