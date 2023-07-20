@@ -28,9 +28,6 @@ export const UserType = new graphql.GraphQLObjectType<User, Context>({
     userSubscribedTo: {
       type: new graphql.GraphQLList(UserType),
       resolve: async (source, args, context) => { 
-        if(context.data.subTo){
-          return context.data.subTo.get(source.id);
-        }
         const userSubscibedTo = context.loaders.userSubscribedTo.load(source.id)
         return userSubscibedTo
       }
@@ -38,9 +35,6 @@ export const UserType = new graphql.GraphQLObjectType<User, Context>({
     subscribedToUser: {
       type: new graphql.GraphQLList(UserType),
       resolve: async(source, args, context) => {
-        if(context.data.subs){
-          return context.data.subs.get(source.id)
-        }
         const userSubscibers = context.loaders.userSubscribers.load(source.id)
         return userSubscibers
       }

@@ -45,9 +45,10 @@ const users: graphql.GraphQLFieldConfig<User, Context, UserInput> = {
         const subId = sub.subscriberId;
         return users.find((user) => user.id === subId);
         })));
-      context.data.subs = userSubs;
-    } else {
-      context.data.subs = undefined;
+        
+      for(const key of userSubs.keys()) {
+        context.loaders.userSubscribers.prime(key as string,  userSubs.get(key) as User[]);
+      }
     }
 
     if(isUserSubscribedToField) {
@@ -56,10 +57,9 @@ const users: graphql.GraphQLFieldConfig<User, Context, UserInput> = {
         const authorId = sub.authorId;
         return users.find((user) => user.id === authorId);
       })));
-      context.data.subTo = userSubsTo;
-      return users;
-    } else {
-      context.data.subTo = undefined;
+      for(const key of userSubsTo.keys()) {
+        context.loaders.userSubscribedTo.prime(key as string,  userSubsTo.get(key) as User[]);
+      }
     }
     return users;
   },
